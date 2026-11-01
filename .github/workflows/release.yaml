@@ -1,0 +1,71 @@
+name: Release Tweak
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag_name:
+        description: 'Release tag (e.g., v1.0.0)'
+        required: false
+        default: ''
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: macos-latest
+
+    steps:
+    # checkout source
+    - name: Checkout Source
+      uses: actions/checkout@v4
+      with:
+        submodules: recursive
+
+    # install Theos and SDK
+    - name: Configure Theos
+      shell: bash
+      run: |
+        set -euo pipefail
+
+        echo "THEOS=$HOME/theos" >> "$GITHUB_ENV"
+
+        git clone --recursive \
+          https://github.com/theos/theos.git \
+          "$HOME/theos"
+
+        rm -rf "$HOME/theos/sdks"
+
+        git clone \
+          https://github.com/theos/sdks.git \
+          "$HOME/theos/sdks"
+
+        brew install ldid
+
+    # compile dylib
+    - name: Build Arsenic-SBX
+      shell: bash
+      run: |
+        set -euo pipefail
+
+        make clean
+        make FINALPACKAGE=1
+
+        find .theos/obj -maxdepth 1 -type f -name "*.dylib" -print
+
+    # upload as workflow artifact
+    - name: Upload Compiled Dylib
+      uses: actions/upload-artifact@v4
+      with:
+        name: Arsenic-SBX-Dylib
+        path: .theos/obj/*.dylib
+        if-no-files-found: error
+
+    # release
+    - name: Create GitHub Release
+      uses: softprops/action-gh-release@v2
+      with:
+        tag_name: ${{ inputs.tag_name != '' && inputs.tag_name || format('v1.0.{0}', github.run_number) }}
+        name: "Arsenic-SBX ${{ inputs.tag_name != '' && inputs.tag_name || format('v1.0.{0}', github.run_number) }}"
+        files: .theos/obj/*.dylib
+        fail_on_unmatched_files: true

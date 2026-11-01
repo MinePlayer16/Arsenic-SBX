@@ -1,0 +1,58 @@
+name: Build Tweak
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-latest
+
+    steps:
+    # checkout source
+    - name: Checkout Source
+      uses: actions/checkout@v4
+      with:
+        submodules: recursive
+
+    # install Theos and SDK
+    - name: Configure Theos
+      shell: bash
+      run: |
+        set -euo pipefail
+
+        echo "THEOS=$HOME/theos" >> "$GITHUB_ENV"
+
+        git clone --recursive \
+          https://github.com/theos/theos.git \
+          "$HOME/theos"
+
+        rm -rf "$HOME/theos/sdks"
+
+        git clone \
+          https://github.com/theos/sdks.git \
+          "$HOME/theos/sdks"
+
+        brew install ldid
+
+
+    # compile dylib
+    - name: Build Arsenic-SBX
+      shell: bash
+      run: |
+        set -euo pipefail
+
+        make clean
+        make FINALPACKAGE=1
+
+        find .theos/obj \
+          -type f \
+          -name "*.dylib" \
+          -print
+
+    # upload dylib
+    - name: Upload Compiled Dylib
+      uses: actions/upload-artifact@v4
+      with:
+        name: Arsenic-SBX-Dylib
+        path: .theos/obj/**/*.dylib
+        if-no-files-found: error

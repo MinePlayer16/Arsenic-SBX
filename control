@@ -1,0 +1,8 @@
+Package: com.iggy05.arsenicsbx
+Name: ArsenicSBX
+Version: 1.0.0
+Architecture: iphoneos-arm64
+Description: Requests a sandbox extension token from Arsenic and grants it to the injected app.
+Maintainer: Iggy05
+Author: Iggy05
+Section: Tweaks
